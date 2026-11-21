@@ -1,0 +1,16 @@
+{
+  "name": "oce2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "bun scripts/setup.ts",
+    "test": "bun scripts/setup.ts && bun test",
+    "test:only": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "@xterm/headless": "5.5.0",
+    "typescript": "5.9.3"
+  }
+}

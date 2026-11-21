@@ -1,0 +1,70 @@
+name: e2e
+
+on:
+  push:
+    branches: [e2e/opencode-e2e-suite]
+  pull_request:
+    paths: ["e2e/**", ".github/workflows/e2e.yml"]
+  workflow_dispatch:
+    inputs:
+      opencode_ref:
+        description: "opencode commit, branch, or tag to test instead of the pinned commit"
+        required: false
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: e2e
+    env:
+      OPENCODE_REF: ${{ inputs.opencode_ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('e2e/opencode.lock.json', 'e2e/bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - run: bun install --frozen-lockfile
+
+      - name: Fetch and install opencode
+        run: bun run setup
+
+      - run: bun run typecheck
+
+      - name: Run e2e suite
+        run: bun test
+
+  real-provider:
+    # Opt-in: runs only when the repository has the OCE2E_REAL_PROVIDER variable set to 1.
+    if: vars.OCE2E_REAL_PROVIDER == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: e2e
+    env:
+      OCE2E_REAL_PROVIDER: "1"
+      OCE2E_REAL_MODEL: ${{ vars.OCE2E_REAL_MODEL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun run setup
+      - run: bun test tests/smoke
